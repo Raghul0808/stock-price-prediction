@@ -421,7 +421,7 @@ results_ARIMA.forecast(14)
 
 # In[ ]:
      
-           date    close
+       # date    close 
 0   23-OCT-2024  1940.20
 1   24-OCT-2024  1936.95
 2   25-OCT-2024  1894.35
