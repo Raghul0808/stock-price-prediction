@@ -445,7 +445,7 @@ min    1362.350000  1402.100000  1344.400000  1371.550000   5.818974e+06
 75%    1931.575000  1942.550000  1907.100000  1929.425000   4.585404e+07   
 max    2091.400000  2095.650000  2061.950000  2083.950000   1.106509e+08   
 
-       Turnover (₹ Cr)  
+       # Turnover (₹ Cr)  
 count       123.000000  
 mean        387.437886  
 std         181.274523  
@@ -464,14 +464,14 @@ Shares Traded        int64
 Turnover (₹ Cr)    float64
 dtype: object
 <class 'pandas.core.frame.DataFrame'>
-               Close
-Date                
+               # Close
+# Date                
 01-APR-2025  1508.30
 01-FEB-2025  1615.10
 01-JAN-2025  1832.65
 ========================
-               Close
-Date                
+               # Close
+# Date                
 31-DEC-2024  1817.85
 31-JAN-2025  1580.25
 31-OCT-2024  2019.00
