@@ -1,97 +1,412 @@
-# streamlit_arima_app.py
 
-import streamlit as st
-import pandas as pd
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[135]:
+
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+
+# In[136]:
+
+
+import warnings
+warnings.filterwarnings('ignore')
 import numpy as np
+import pandas as pd
+from pandas import DataFrame
 import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import adfuller, acf, pacf
+
+
+# In[137]:
+
+
+from statsmodels.tsa.arima_model import ARIMA
+import statsmodels.api as sm
+import statsmodels.tsa.api as smt
+import statsmodels.formula.api as smf
+
+from sklearn.metrics import mean_squared_error
+
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# In[138]:
+
+df = pd.read_csv('/NIFTY MEDIA DATA SET.csv')
+df.columns = df.columns.str.strip()
+
+# Now you can access columns safely
+df1 = df[['Date', 'Close']]
+df1.columns = ['date', 'close']  # Rename for consistency
+
+# Show the first 3 rows
+print(df1.head(100))
+df.head(3)
+
+
+# In[139]:
+
+
+print (df.describe())
+print ("=============================================================")
+print (df.dtypes)
+
+
+# In[140]:
+
+
+df1 = df[['Date','Close']]
+df1.head(3)
+
+
+# In[141]:
+
+
+# Setting the Date as Index
+df_ts = df1.set_index('Date')
+df_ts.sort_index(inplace=True)
+print (type(df_ts))
+print (df_ts.head(3))
+print ("========================")
+print (df_ts.tail(3))
+
+
+# In[142]:
+
+
+df_ts[df_ts.isnull()]
+
+
+# In[143]:
+
+
+len(df_ts[df_ts.isnull()])
+
+
+# In[144]:
+
+
+df_ts = df_ts.sort_index()
+df_ts.index
+
+
+# In[145]:
+
+
+df_ts.Close.fillna(method='pad', inplace=True)
+
+
+# In[146]:
+
+
+df_ts[df_ts.Close.isnull()]
+len(df_ts[df_ts.Close.isnull()])
+
+
+# In[147]:
+
+
+df_ts.plot()
+
+
+# In[148]:
+
+
+# Dickey Fuller Test Function
+def test_stationarity(timeseries):
+    # Perform Dickey-Fuller test:
+    from statsmodels.tsa.stattools import adfuller
+    print('Results of Dickey-Fuller Test:')
+    print ("==============================================")
+
+    dftest = adfuller(timeseries, autolag='AIC')
+
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#lags Used', 'Number of Observations Used'])
+
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)'%key] = value
+
+    print(dfoutput)
+
+
+# In[149]:
+
+
+# Stationarity Check - Lets do a quick check on Stationarity with Dickey Fuller Test
+# Convert the DF to series first
+ts = df_ts['Close']
+test_stationarity(ts)
+
+
+# In[152]:
+
+rolstd = ts.rolling(window=365).std()
+rolmean = ts.rolling(window=365).mean()
+rolvar = ts.rolling(window=365).std()
+
+#plt.figure(figsize=(10, 6))
+#plt.plot(ts, label='Original', color='blue')
+#plt.plot(rolmean, label='Rolling Mean', color='red')
+#plt.plot(rolstd, label='Rolling Std Dev', color='black')
+#plt.legend(loc='best')
+#plt.title('Rolling Mean & Standard Deviation')
+#plt.show(block=False)
+
+
+
+# In[75]:
+
+
+ts.dropna(inplace=True)
+ts.head(5)
+from statsmodels.tsa.stattools import adfuller
+
+
+# In[77]:
+
+
+print('results of dikey-fuller test:')
+dftest=adfuller(ts, autolag='AIC')
+
+
+# In[78]:
+
+
+dfoutput=pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#lags Used', '#observations'])
+for key,value in dftest[4].items():
+    dfoutput['Critical value (%s)'%key]=value
+
+print (dfoutput)
+
+
+# In[79]:
+
+
+ts_logScale=np.log(ts)
+plt.plot(ts_logScale)
+
+
+# In[80]:
+
+
+movingAverage=ts_logScale.rolling(window=12).mean()
+movingSTD=ts_logScale.rolling(window=12).std()
+plt.plot(ts_logScale)
+plt.plot(movingAverage, color='red')
+
+
+# In[81]:
+
+
+ts_LogScaleMinusMA=ts_logScale-movingAverage
+ts_LogScaleMinusMA.head(12)
+ts_LogScaleMinusMA.dropna(inplace=True)
+ts_LogScaleMinusMA.head(10)
+
+
+# In[84]:
+
+
+from statsmodels.tsa.stattools import adfuller
+def test_stationarity(timeseries):
+    movingAverage=timeseries.rolling(window=12).mean()
+    movingSTD=timeseries.rolling(window=12).std()
+    orig=plt.plot(timeseries, color='blue', label='Original')
+    mean=plt.plot(movingAverage, color='red', label='rMean')
+    std=plt.plot(movingSTD, color='yellow', label='rStd')
+    plt.legend(loc='best')
+    plt.title('Rolling Mean & STD')
+    plt.show(block=False)
+    print('results of dikey-fuller test:')
+    dftest=adfuller(timeseries, autolag='AIC')
+    dfoutput=pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#lags Used', '#observations'])
+    for key,value in dftest[4].items():
+        dfoutput['Critical value (%s)'%key]=value
+
+    print (dfoutput)
+
+
+# In[85]:
+
+
+test_stationarity(ts_LogScaleMinusMA)
+
+
+# In[86]:
+
+
+exponentialDecayWeightedAverage=ts_logScale.ewm(halflife=12, min_periods=0, adjust=True).mean()
+plt.plot(ts_logScale)
+plt.plot(exponentialDecayWeightedAverage, color='red')
+
+
+# In[88]:
+
+
+ts_LogScaleMinusExponentialDecayAverage= ts-exponentialDecayWeightedAverage
+test_stationarity(ts_LogScaleMinusExponentialDecayAverage)
+
+
+# In[89]:
+
+
+ts_LogDiffShifting= ts_logScale-ts_logScale.shift()
+plt.plot(ts_LogDiffShifting)
+
+
+# In[90]:
+
+
+ts_LogDiffShifting.dropna(inplace=True)
+test_stationarity(ts_LogDiffShifting)
+
+
+# In[92]:
+
+
+ts_logScale.head()
+
+
+# In[95]:
+
+
 from statsmodels.tsa.seasonal import seasonal_decompose
+ts_logScale.dropna(inplace=True)
+decomposition = seasonal_decompose(ts_logScale, period=30)
+trend =decomposition.trend
+seasonal=decomposition.seasonal
+residual=decomposition.resid
+
+
+# In[96]:
+
+
+plt.subplot(411)
+plt.plot(ts_logScale, label='Original')
+plt.legend(loc='best')
+plt.subplot(412)
+plt.plot(ts_logScale, label='Trend')
+plt.legend(loc='best')
+plt.subplot(413)
+plt.plot(ts_logScale, label='Seasonality')
+plt.legend(loc='best')
+plt.subplot(414)
+plt.plot(ts_logScale, label='Residuals')
+plt.legend(loc='best')
+plt.tight_layout()
+decomposedLogData=residual
+decomposedLogData.dropna(inplace=True)
+test_stationarity(decomposedLogData)
+
+
+# In[97]:
+
+
+decomposedLogData=residual
+decomposedLogData.dropna(inplace=True)
+test_stationarity(decomposedLogData)
+
+
+# In[100]:
+
+
+from statsmodels.tsa.stattools import acf, pacf
+
+lag_acf=acf(ts_LogDiffShifting, nlags=20)
+lag_pacf=pacf(ts_LogDiffShifting, nlags=20, method='ols')
+
+
+# In[101]:
+
+
+plt.subplot(121)
+plt.plot(lag_acf)
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_LogDiffShifting)), linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_LogDiffShifting)), linestyle='--', color='gray')
+plt.title('Autocorrelation Function')
+plt.subplot(122)
+plt.plot(lag_pacf)
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_LogDiffShifting)), linestyle='--', color='gray')
+plt.axhline(y=1.96/np.sqrt(len(ts_LogDiffShifting)), linestyle='--', color='gray')
+plt.title('Partial Autocorrelation Function')
+plt.tight_layout()
+
+
+# In[114]:
+
+
 from statsmodels.tsa.arima.model import ARIMA
+model=ARIMA(ts_logScale, order=(1,1,1))
+results_AR = model.fit ()
+plt.plot(ts_LogDiffShifting)
+plt.plot(results_AR.fittedvalues, color='red')
+plt.title('RSS: %.4f'% sum((results_AR.fittedvalues-ts_LogDiffShifting)**2))
+print('Plotting AR Model')
 
-# Streamlit UI
-st.title("📈 Stock Price Prediction using ARIMA")
-st.markdown("Upload a CSV file with `Date` and `Close` columns (e.g., NSE stock data).")
 
-uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
+# In[115]:
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    df.columns = df.columns.str.strip()
 
-    if 'Date' not in df.columns or 'Close' not in df.columns:
-        st.error("CSV must contain 'Date' and 'Close' columns.")
-        st.stop()
+model=ARIMA(ts_logScale, order=(1,1,1))
+results_ARIMA = model.fit ()
+plt.plot(ts_LogDiffShifting)
+plt.plot(results_AR.fittedvalues, color='red')
+plt.title('RSS: %.4f'% sum((results_AR.fittedvalues-ts_LogDiffShifting)**2))
 
-    # Clean and prepare
-    df = df[['Date', 'Close']].copy()
-    df.columns = ['date', 'close']
-    df['date'] = pd.to_datetime(df['date'], format='%d-%b-%Y', errors='coerce')
-    df.dropna(inplace=True)
-    df.set_index('date', inplace=True)
-    df.sort_index(inplace=True)
-    df['close'].fillna(method='pad', inplace=True)
 
-    st.subheader("📊 Original Closing Price")
-    st.line_chart(df['close'])
+# In[117]:
 
-    # Log transform
-    ts = df['close']
-    ts_log = np.log(ts)
 
-    # Differencing
-    ts_log_diff = ts_log - ts_log.shift()
-    ts_log_diff.dropna(inplace=True)
+predicitons_ARIMA_diff=pd.Series(results_ARIMA.fittedvalues, copy=True)
+print(predicitons_ARIMA_diff.head())
 
-    # ADF Test
-    def adf_test(series, title=''):
-        result = adfuller(series, autolag='AIC')
-        st.write(f"**ADF Test Results ({title})**")
-        st.write(pd.Series(result[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Num Observations']))
-        for key, value in result[4].items():
-            st.write(f"Critical Value ({key}): {value:.4f}")
 
-    adf_test(ts_log_diff, "Log Differenced Series")
+# In[118]:
 
-    # Decompose
-    st.subheader("🔍 Seasonal Decomposition")
-    decomposition = seasonal_decompose(ts_log.dropna(), period=30)
-    fig, axs = plt.subplots(4, 1, figsize=(10, 8))
-    axs[0].plot(ts_log, label='Original')
-    axs[0].legend(loc='best')
-    axs[1].plot(decomposition.trend, label='Trend')
-    axs[1].legend(loc='best')
-    axs[2].plot(decomposition.seasonal, label='Seasonality')
-    axs[2].legend(loc='best')
-    axs[3].plot(decomposition.resid, label='Residuals')
-    axs[3].legend(loc='best')
-    plt.tight_layout()
-    st.pyplot(fig)
 
-    # Fit ARIMA
-    st.subheader("⚙️ ARIMA Model Fitting")
-    model = ARIMA(ts_log, order=(1, 1, 1))
-    results_ARIMA = model.fit()
+predicitons_ARIMA_diff_cumsum=predicitons_ARIMA_diff.cumsum()
+print(predicitons_ARIMA_diff_cumsum)
 
-    # Forecast in log scale and invert
-    predictions_diff = pd.Series(results_ARIMA.fittedvalues, copy=True)
-    predictions_cumsum = predictions_diff.cumsum()
-    predictions_log = pd.Series(ts_log.iloc[0], index=ts_log.index)
-    predictions_log = predictions_log.add(predictions_cumsum, fill_value=0)
-    predictions_ARIMA = np.exp(predictions_log)
 
-    st.subheader("📈 ARIMA Fit vs Actual")
-    fig2, ax2 = plt.subplots(figsize=(10, 4))
-    ax2.plot(ts, label='Actual')
-    ax2.plot(predictions_ARIMA, label='Fitted', color='red')
-    ax2.legend(loc='best')
-    st.pyplot(fig2)
+# In[121]:
 
-    # Forecast
-    st.subheader("🔮 Future Forecast (Next 14 Days)")
-    forecast_steps = st.slider("Select number of days to forecast", 1, 30, 14)
-    forecast_log = results_ARIMA.forecast(steps=forecast_steps)
-    forecast = np.exp(forecast_log)
 
-    st.write(forecast)
+predictions_ARIMA_log=pd.Series(ts_logScale.iloc[0], index=ts_logScale.index)
+predictions_ARIMA_log=predictions_ARIMA_log.add(predicitons_ARIMA_diff_cumsum, fill_value=0)
 
-    st.line_chart(forecast)
+
+# In[123]:
+
+
+predictions_ARIMA_log.head()
+
+
+# In[124]:
+
+
+predicitons_ARIMA=np.exp(predictions_ARIMA_log)
+plt.plot(ts)
+plt.plot(predicitons_ARIMA)
+
+
+# In[125]:
+
+
+ts_logScale
+
+
+# In[127]:
+
+
+results_ARIMA.predict(1,9575)
+
+
+# In[132]:
+
+
+results_ARIMA.forecast(14)
