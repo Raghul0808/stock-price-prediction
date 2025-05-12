@@ -1,5 +1,5 @@
 # Install required packages
-#!pip install statsmodels
+!pip install -r requirements.txt
 
 # Imports
 import numpy as np
